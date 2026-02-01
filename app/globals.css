@@ -216,6 +216,9 @@ body {
 }
 
 @media (max-width: 640px) {
+  .input {
+    font-size: 16px; /* 防止 iOS 在输入时自动放大 */
+  }
   .container {
     padding: 16px;
   }
