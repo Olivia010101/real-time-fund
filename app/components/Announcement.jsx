@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ANNOUNCEMENT_KEY = 'hasClosedAnnouncement_v2';
+const ANNOUNCEMENT_KEY = 'hasClosedAnnouncement_v3';
 
 export default function Announcement() {
   const [isVisible, setIsVisible] = useState(false);
@@ -65,8 +65,11 @@ export default function Announcement() {
             
             <div style={{ color: 'var(--text)', lineHeight: '1.6', fontSize: '15px' }}>
               感谢大家反馈的需求，现已增加如下功能：
-              <p>1. 基金录入支持模糊搜索多选。</p>
-              <p>2. 设置弹框内新增数据导入/导出，以便在不同设备同步。</p>
+              <p>1. 基金目录分组。</p>
+              关于大家反馈比较多的以下功能会在下一个版本上线：
+              <p>1. 当日实际涨跌幅。</p>
+              <p>2. 持仓金额计算。</p>
+              每一个功能的加入都会去精细设计它的UI和交互，以符合项目整体的简约风格，所以请大家敬请期待。
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
