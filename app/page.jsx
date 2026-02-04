@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Announcement from "./components/Announcement";
+import Navbar from "./components/Navbar";
+import FundFilterBar from "./components/FundFilterBar";
+import SettingsModal from "./components/SettingsModal";
 import {
   PlusIcon,
   TrashIcon,
@@ -79,7 +82,7 @@ export default function HomePage() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [addResultOpen, setAddResultOpen] = useState(false);
   const [addFailures, setAddFailures] = useState([]);
-  const tabsRef = useRef(null);
+  // tabs 滚动逻辑已封装到 FundFilterBar 中
 
   // 过滤和排序后的基金列表
   const displayFunds = funds
@@ -115,62 +118,6 @@ export default function HomePage() {
       if (sortBy === 'code') return a.code.localeCompare(b.code);
       return 0;
     });
-
-  // 自动滚动选中 Tab 到可视区域
-  useEffect(() => {
-    if (!tabsRef.current) return;
-    if (currentTab === 'all') {
-      tabsRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-      return;
-    }
-    const activeTab = tabsRef.current.querySelector('.tab.active');
-    if (activeTab) {
-      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
-  }, [currentTab]);
-
-  // 鼠标拖拽滚动逻辑
-  const [isDragging, setIsDragging] = useState(false);
-  // Removed startX and scrollLeft state as we use movementX now
-  const [tabsOverflow, setTabsOverflow] = useState(false);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(false);
-
-  const handleMouseDown = (e) => {
-    if (!tabsRef.current) return;
-    setIsDragging(true);
-  };
-
-  const handleMouseLeaveOrUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging || !tabsRef.current) return;
-    e.preventDefault();
-    tabsRef.current.scrollLeft -= e.movementX;
-  };
-
-  const handleWheel = (e) => {
-    if (!tabsRef.current) return;
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-    tabsRef.current.scrollLeft += delta;
-  };
-
-  const updateTabOverflow = () => {
-    if (!tabsRef.current) return;
-    const el = tabsRef.current;
-    setTabsOverflow(el.scrollWidth > el.clientWidth);
-    setCanLeft(el.scrollLeft > 0);
-    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
-  };
-
-  useEffect(() => {
-    updateTabOverflow();
-    const onResize = () => updateTabOverflow();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [groups, funds.length, favorites.size]);
 
   // 成功提示弹窗
   const [successModal, setSuccessModal] = useState({ open: false, message: '' });
@@ -930,40 +877,13 @@ export default function HomePage() {
   return (
     <div className="container content">
       <Announcement />
-      <div className="navbar glass">
-        {refreshing && <div className="loading-bar"></div>}
-        <div className="brand">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="var(--accent)" strokeWidth="2" />
-            <path d="M5 14c2-4 7-6 14-5" stroke="var(--primary)" strokeWidth="2" />
-          </svg>
-          <span>基估宝</span>
-        </div>
-        <div className="actions">
-          <div className="badge" title="当前刷新频率">
-            <span>刷新</span>
-            <strong>{Math.round(refreshMs / 1000)}秒</strong>
-          </div>
-          <button
-            className="icon-button"
-            aria-label="立即刷新"
-            onClick={manualRefresh}
-            disabled={refreshing || funds.length === 0}
-            aria-busy={refreshing}
-            title="立即刷新"
-          >
-            <RefreshIcon className={refreshing ? 'spin' : ''} width="18" height="18" />
-          </button>
-          <button
-            className="icon-button"
-            aria-label="打开设置"
-            onClick={() => setSettingsOpen(true)}
-            title="设置"
-          >
-            <SettingsIcon width="18" height="18" />
-          </button>
-        </div>
-      </div>
+      <Navbar
+        refreshMs={refreshMs}
+        refreshing={refreshing}
+        hasFunds={funds.length > 0}
+        onManualRefresh={manualRefresh}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       <div className="grid">
         <div className="col-12 glass card add-fund-section" role="region" aria-label="添加基金">
@@ -1053,131 +973,22 @@ export default function HomePage() {
         </div>
 
         <div className="col-12">
-          <div className="filter-bar" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-            <div className="tabs-container">
-              <div 
-                className="tabs-scroll-area"
-                data-mask-left={canLeft}
-                data-mask-right={canRight}
-              >
-                <div 
-                    className="tabs" 
-                    ref={tabsRef}
-                    onMouseDown={handleMouseDown}
-                    onMouseLeave={handleMouseLeaveOrUp}
-                    onMouseUp={handleMouseLeaveOrUp}
-                    onMouseMove={handleMouseMove}
-                    onWheel={handleWheel}
-                    onScroll={updateTabOverflow}
-                  >
-                    <AnimatePresence mode="popLayout">
-                      <motion.button
-                        layout
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        key="all"
-                        className={`tab ${currentTab === 'all' ? 'active' : ''}`}
-                        onClick={() => setCurrentTab('all')}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 1 }}
-                      >
-                        全部 ({funds.length})
-                      </motion.button>
-                      <motion.button
-                        layout
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        key="fav"
-                        className={`tab ${currentTab === 'fav' ? 'active' : ''}`}
-                        onClick={() => setCurrentTab('fav')}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 1 }}
-                      >
-                        自选 ({favorites.size})
-                      </motion.button>
-                      {groups.map(g => (
-                        <motion.button
-                          layout
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          key={g.id}
-                          className={`tab ${currentTab === g.id ? 'active' : ''}`}
-                          onClick={() => setCurrentTab(g.id)}
-                          transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 1 }}
-                        >
-                          {g.name} ({g.codes.length})
-                        </motion.button>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-              </div>
-              {groups.length > 0 && (
-                <button 
-                  className="icon-button manage-groups-btn" 
-                  onClick={() => setGroupManageOpen(true)}
-                  title="管理分组"
-                >
-                  <SortIcon width="16" height="16" />
-                </button>
-              )}
-              <button 
-                className="icon-button add-group-btn" 
-                onClick={() => setGroupModalOpen(true)}
-                title="新增分组"
-              >
-                <PlusIcon width="16" height="16" />
-              </button>
-            </div>
-
-            <div className="sort-group" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div className="view-toggle" style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '2px' }}>
-                  <button
-                    className={`icon-button ${viewMode === 'card' ? 'active' : ''}`}
-                    onClick={() => { setViewMode('card'); localStorage.setItem('viewMode', 'card'); }}
-                    style={{ border: 'none', width: '32px', height: '32px', background: viewMode === 'card' ? 'var(--primary)' : 'transparent', color: viewMode === 'card' ? '#05263b' : 'var(--muted)' }}
-                    title="卡片视图"
-                  >
-                    <GridIcon width="16" height="16" />
-                  </button>
-                  <button
-                      className={`icon-button ${viewMode === 'list' ? 'active' : ''}`}
-                      onClick={() => { setViewMode('list'); localStorage.setItem('viewMode', 'list'); }}
-                      style={{ border: 'none', width: '32px', height: '32px', background: viewMode === 'list' ? 'var(--primary)' : 'transparent', color: viewMode === 'list' ? '#05263b' : 'var(--muted)' }}
-                      title="表格视图"
-                    >
-                      <ListIcon width="16" height="16" />
-                    </button>
-                </div>
-
-                <div className="divider" style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
-
-                <div className="sort-items" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="muted" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <SortIcon width="14" height="14" />
-                    排序
-                  </span>
-                  <div className="chips">
-                    {[
-                      { id: 'default', label: '默认' },
-                      { id: 'yield', label: '涨跌幅' },
-                      { id: 'recentYield', label: '最近交易日收益' },
-                      { id: 'name', label: '名称' },
-                      { id: 'code', label: '代码' }
-                    ].map((s) => (
-                      <button
-                        key={s.id}
-                        className={`chip ${sortBy === s.id ? 'active' : ''}`}
-                        onClick={() => setSortBy(s.id)}
-                        style={{ height: '28px', fontSize: '12px', padding: '0 10px' }}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+          <FundFilterBar
+            fundsCount={funds.length}
+            favoritesCount={favorites.size}
+            groups={groups}
+            currentTab={currentTab}
+            onChangeTab={setCurrentTab}
+            viewMode={viewMode}
+            onChangeViewMode={(mode) => {
+              setViewMode(mode);
+              localStorage.setItem('viewMode', mode);
+            }}
+            sortBy={sortBy}
+            onChangeSortBy={setSortBy}
+            onOpenGroupManage={() => setGroupManageOpen(true)}
+            onOpenGroupModal={() => setGroupModalOpen(true)}
+          />
 
           {displayFunds.length === 0 ? (
             <div className="glass card empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px' }}>
@@ -1696,68 +1507,16 @@ export default function HomePage() {
       </AnimatePresence>
 
       {settingsOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="设置" onClick={() => setSettingsOpen(false)}>
-          <div className="glass card modal" onClick={(e) => e.stopPropagation()}>
-            <div className="title" style={{ marginBottom: 12 }}>
-              <SettingsIcon width="20" height="20" />
-              <span>设置</span>
-              <span className="muted">配置刷新频率</span>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: 16 }}>
-              <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>刷新频率</div>
-              <div className="chips" style={{ marginBottom: 12 }}>
-                {[10, 30, 60, 120, 300].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`chip ${tempSeconds === s ? 'active' : ''}`}
-                    onClick={() => setTempSeconds(s)}
-                    aria-pressed={tempSeconds === s}
-                  >
-                    {s} 秒
-                  </button>
-                ))}
-              </div>
-              <input
-                className="input"
-                type="number"
-                min="5"
-                step="5"
-                value={tempSeconds}
-                onChange={(e) => setTempSeconds(Number(e.target.value))}
-                placeholder="自定义秒数"
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: 16 }}>
-              <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem' }}>数据导出</div>
-              <div className="row" style={{ gap: 8 }}>
-                <button type="button" className="button" onClick={exportLocalData}>导出配置</button>
-              </div>
-              <div className="muted" style={{ marginBottom: 8, fontSize: '0.8rem', marginTop: 26 }}>数据导入</div>
-              <div className="row" style={{ gap: 8, marginTop: 8 }}>
-                <button type="button" className="button" onClick={() => importFileRef.current?.click?.()}>导入配置</button>
-              </div>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept="application/json"
-                style={{ display: 'none' }}
-                onChange={handleImportFileChange}
-              />
-              {importMsg && (
-                <div className="muted" style={{ marginTop: 8 }}>
-                  {importMsg}
-                </div>
-              )}
-            </div>
-
-            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 24 }}>
-              <button className="button" onClick={saveSettings}>保存并关闭</button>
-            </div>
-          </div>
-        </div>
+        <SettingsModal
+          tempSeconds={tempSeconds}
+          onTempSecondsChange={setTempSeconds}
+          importFileRef={importFileRef}
+          importMsg={importMsg}
+          onExport={exportLocalData}
+          onImportChange={handleImportFileChange}
+          onSave={saveSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
     </div>
   );
