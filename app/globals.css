@@ -122,7 +122,6 @@ body {
 }
 
 .input {
-  flex: 1;
   height: 44px;
   padding: 0 14px;
   border-radius: 12px;
@@ -573,6 +572,54 @@ body {
   max-width: 92vw;
   padding: 16px;
 }
+
+/* 登录弹窗专用样式 */
+.auth-modal {
+  max-width: 420px;
+}
+
+.auth-modal-header {
+  margin-bottom: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.auth-modal-title-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-modal-subtitle {
+  font-size: 0.8rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-form .button {
+  width: 100%;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* 登录弹窗内输入框：保持全局高度，只微调圆角和宽度以更协调 */
+.auth-modal .input {
+  width: 100%;
+  border-radius: 10px;
+}
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -648,6 +695,16 @@ body {
   right: 12px;
   width: 18px;
   height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.1);
   border-top-color: var(--primary);
   border-radius: 50%;

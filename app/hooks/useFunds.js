@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchFundData } from '../lib/fundApi';
+import { syncService, DATA_KEYS } from '../lib/syncService';
 
 // 按 code 去重，保留第一次出现的项，避免列表重复
 const dedupeByCode = (list) => {
@@ -59,7 +60,7 @@ export const useFunds = () => {
               }
             });
             const deduped = dedupeByCode(merged);
-            localStorage.setItem('funds', JSON.stringify(deduped));
+            syncService.save(DATA_KEYS.FUNDS, deduped);
             return deduped;
           });
         }
@@ -73,29 +74,35 @@ export const useFunds = () => {
     []
   );
 
-  // 初始化：从 localStorage 读取基金列表、刷新频率和持仓，并触发一次刷新
+  // 初始化：从本地/云端读取基金列表、刷新频率和持仓，并触发一次刷新
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('funds') || '[]');
-      if (Array.isArray(saved) && saved.length) {
-        const deduped = dedupeByCode(saved);
-        setFunds(deduped);
-        localStorage.setItem('funds', JSON.stringify(deduped));
-        const codes = Array.from(new Set(deduped.map((f) => f.code)));
-        if (codes.length) refreshAll(codes);
+    const loadData = async () => {
+      try {
+        // 从同步服务加载数据（会尝试从云端同步）
+        const saved = await syncService.load(DATA_KEYS.FUNDS, []);
+        if (Array.isArray(saved) && saved.length) {
+          const deduped = dedupeByCode(saved);
+          setFunds(deduped);
+          const codes = Array.from(new Set(deduped.map((f) => f.code)));
+          if (codes.length) refreshAll(codes);
+        }
+        
+        const savedMs = await syncService.load(DATA_KEYS.REFRESH_MS, 30000);
+        if (Number.isFinite(savedMs) && savedMs >= 5000) {
+          setRefreshMs(savedMs);
+        }
+        
+        // 加载持仓信息
+        const savedPositions = await syncService.load(DATA_KEYS.POSITIONS, {});
+        if (savedPositions && typeof savedPositions === 'object') {
+          setPositions(savedPositions);
+        }
+      } catch {
+        // ignore
       }
-      const savedMs = parseInt(localStorage.getItem('refreshMs') || '30000', 10);
-      if (Number.isFinite(savedMs) && savedMs >= 5000) {
-        setRefreshMs(savedMs);
-      }
-      // 加载持仓信息
-      const savedPositions = JSON.parse(localStorage.getItem('positions') || '{}');
-      if (savedPositions && typeof savedPositions === 'object') {
-        setPositions(savedPositions);
-      }
-    } catch {
-      // ignore
-    }
+    };
+    
+    loadData();
   }, [refreshAll]);
 
   // 定时刷新
@@ -119,7 +126,7 @@ export const useFunds = () => {
 
   const updateRefreshMs = useCallback((ms) => {
     setRefreshMs(ms);
-    localStorage.setItem('refreshMs', String(ms));
+    syncService.save(DATA_KEYS.REFRESH_MS, ms);
   }, []);
 
   return {

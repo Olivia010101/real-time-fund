@@ -8,6 +8,8 @@ export default function Navbar({
   hasFunds,
   onManualRefresh,
   onOpenSettings,
+  syncStatus,
+  onOpenAuth,
 }) {
   return (
     <div className="navbar glass">
@@ -20,6 +22,11 @@ export default function Navbar({
         <span>基估宝</span>
       </div>
       <div className="actions">
+        {syncStatus && (
+          <div style={{ marginRight: '8px', cursor: 'pointer' }} onClick={onOpenAuth}>
+            {syncStatus}
+          </div>
+        )}
         <div className="badge" title="当前刷新频率">
           <span>刷新</span>
           <strong>{Math.round(refreshMs / 1000)}秒</strong>

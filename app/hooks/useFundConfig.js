@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { syncService, DATA_KEYS } from '../lib/syncService';
 
 /**
  * 负责基金配置的导入 / 导出逻辑：
@@ -28,14 +29,24 @@ export const useFundConfig = ({
 
   const exportLocalData = async () => {
     try {
+      // 从同步服务读取数据（优先从本地，因为导出当前状态）
+      const funds = syncService.loadFromLocal(DATA_KEYS.FUNDS, []);
+      const favorites = syncService.loadFromLocal(DATA_KEYS.FAVORITES, []);
+      const groups = syncService.loadFromLocal(DATA_KEYS.GROUPS, []);
+      const collapsedCodes = syncService.loadFromLocal(DATA_KEYS.COLLAPSED_CODES, []);
+      const refreshMs = syncService.loadFromLocal(DATA_KEYS.REFRESH_MS, 30000);
+      const viewMode = syncService.loadFromLocal(DATA_KEYS.VIEW_MODE, 'card');
+      const positions = syncService.loadFromLocal(DATA_KEYS.POSITIONS, {});
+      
       const payload = {
         version: 1,
-        funds: JSON.parse(localStorage.getItem('funds') || '[]'),
-        favorites: JSON.parse(localStorage.getItem('favorites') || '[]'),
-        groups: JSON.parse(localStorage.getItem('groups') || '[]'),
-        collapsedCodes: JSON.parse(localStorage.getItem('collapsedCodes') || '[]'),
-        refreshMs: parseInt(localStorage.getItem('refreshMs') || '30000', 10),
-        viewMode: localStorage.getItem('viewMode') || 'card',
+        funds,
+        favorites,
+        groups,
+        collapsedCodes,
+        refreshMs,
+        viewMode,
+        positions,
         exportedAt: new Date().toISOString(),
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -85,11 +96,11 @@ export const useFundConfig = ({
       const text = await file.text();
       const data = JSON.parse(text);
       if (data && typeof data === 'object') {
-        // 从 localStorage 读取最新数据进行合并，防止状态滞后导致的数据丢失
-        const currentFunds = JSON.parse(localStorage.getItem('funds') || '[]');
-        const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-        const currentGroups = JSON.parse(localStorage.getItem('groups') || '[]');
-        const currentCollapsed = JSON.parse(localStorage.getItem('collapsedCodes') || '[]');
+        // 从同步服务读取最新数据进行合并，防止状态滞后导致的数据丢失
+        const currentFunds = syncService.loadFromLocal(DATA_KEYS.FUNDS, []);
+        const currentFavorites = syncService.loadFromLocal(DATA_KEYS.FAVORITES, []);
+        const currentGroups = syncService.loadFromLocal(DATA_KEYS.GROUPS, []);
+        const currentCollapsed = syncService.loadFromLocal(DATA_KEYS.COLLAPSED_CODES, []);
 
         let mergedFunds = currentFunds;
         let appendedCodes = [];
@@ -103,7 +114,7 @@ export const useFundConfig = ({
           appendedCodes = newItems.map((f) => f.code);
           mergedFunds = [...currentFunds, ...newItems];
           setFunds(mergedFunds);
-          localStorage.setItem('funds', JSON.stringify(mergedFunds));
+          syncService.save(DATA_KEYS.FUNDS, mergedFunds);
         }
 
         if (Array.isArray(data.favorites)) {
@@ -111,7 +122,7 @@ export const useFundConfig = ({
             new Set([...currentFavorites, ...data.favorites])
           );
           setFavorites(new Set(mergedFav));
-          localStorage.setItem('favorites', JSON.stringify(mergedFav));
+          syncService.save(DATA_KEYS.FAVORITES, mergedFav);
         }
 
         if (Array.isArray(data.groups)) {
@@ -136,7 +147,7 @@ export const useFundConfig = ({
             }
           });
           setGroups(mergedGroups);
-          localStorage.setItem('groups', JSON.stringify(mergedGroups));
+          syncService.save(DATA_KEYS.GROUPS, mergedGroups);
         }
 
         if (Array.isArray(data.collapsedCodes)) {
@@ -144,7 +155,7 @@ export const useFundConfig = ({
             new Set([...currentCollapsed, ...data.collapsedCodes])
           );
           setCollapsedCodes(new Set(mergedCollapsed));
-          localStorage.setItem('collapsedCodes', JSON.stringify(mergedCollapsed));
+          syncService.save(DATA_KEYS.COLLAPSED_CODES, mergedCollapsed);
         }
 
         if (typeof data.refreshMs === 'number' && data.refreshMs >= 5000) {
@@ -157,12 +168,13 @@ export const useFundConfig = ({
 
         // 兼容导入持仓信息（如果存在）
         if (data.positions && typeof data.positions === 'object') {
+          const currentPositions = syncService.loadFromLocal(DATA_KEYS.POSITIONS, {});
           const mergedPositions = {
-            ...(JSON.parse(localStorage.getItem('positions') || '{}') || {}),
+            ...currentPositions,
             ...data.positions,
           };
           setPositions(mergedPositions);
-          localStorage.setItem('positions', JSON.stringify(mergedPositions));
+          syncService.save(DATA_KEYS.POSITIONS, mergedPositions);
         }
 
         // 导入成功后，仅刷新新追加的基金

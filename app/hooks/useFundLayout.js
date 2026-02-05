@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { syncService, DATA_KEYS } from '../lib/syncService';
 
 /**
  * 管理与布局相关的状态：
@@ -19,28 +20,32 @@ export const useFundLayout = (funds) => {
   const [currentTab, setCurrentTab] = useState('all');
   const [viewMode, setViewMode] = useState('card'); // card, list
 
-  // 初始化：从 localStorage 读取布局相关状态
+  // 初始化：从本地/云端读取布局相关状态
   useEffect(() => {
-    try {
-      const savedCollapsed = JSON.parse(localStorage.getItem('collapsedCodes') || '[]');
-      if (Array.isArray(savedCollapsed)) {
-        setCollapsedCodes(new Set(savedCollapsed));
+    const loadData = async () => {
+      try {
+        const savedCollapsed = await syncService.load(DATA_KEYS.COLLAPSED_CODES, []);
+        if (Array.isArray(savedCollapsed)) {
+          setCollapsedCodes(new Set(savedCollapsed));
+        }
+        const savedFavorites = await syncService.load(DATA_KEYS.FAVORITES, []);
+        if (Array.isArray(savedFavorites)) {
+          setFavorites(new Set(savedFavorites));
+        }
+        const savedGroups = await syncService.load(DATA_KEYS.GROUPS, []);
+        if (Array.isArray(savedGroups)) {
+          setGroups(savedGroups);
+        }
+        const savedViewMode = await syncService.load(DATA_KEYS.VIEW_MODE, 'card');
+        if (savedViewMode === 'card' || savedViewMode === 'list') {
+          setViewMode(savedViewMode);
+        }
+      } catch {
+        // ignore
       }
-      const savedFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-      if (Array.isArray(savedFavorites)) {
-        setFavorites(new Set(savedFavorites));
-      }
-      const savedGroups = JSON.parse(localStorage.getItem('groups') || '[]');
-      if (Array.isArray(savedGroups)) {
-        setGroups(savedGroups);
-      }
-      const savedViewMode = localStorage.getItem('viewMode');
-      if (savedViewMode === 'card' || savedViewMode === 'list') {
-        setViewMode(savedViewMode);
-      }
-    } catch {
-      // ignore
-    }
+    };
+    
+    loadData();
   }, []);
 
   // 默认收起前 10 重仓股票：初始时将所有已存在基金 code 加入 collapsedCodes
@@ -56,7 +61,7 @@ export const useFundLayout = (funds) => {
         }
       });
       if (changed) {
-        localStorage.setItem('collapsedCodes', JSON.stringify(Array.from(next)));
+        syncService.save(DATA_KEYS.COLLAPSED_CODES, Array.from(next));
       }
       return changed ? next : prev;
     });
@@ -70,7 +75,7 @@ export const useFundLayout = (funds) => {
       } else {
         next.add(code);
       }
-      localStorage.setItem('favorites', JSON.stringify(Array.from(next)));
+      syncService.save(DATA_KEYS.FAVORITES, Array.from(next));
       if (next.size === 0) setCurrentTab('all');
       return next;
     });
@@ -84,7 +89,7 @@ export const useFundLayout = (funds) => {
       } else {
         next.add(code);
       }
-      localStorage.setItem('collapsedCodes', JSON.stringify(Array.from(next)));
+      syncService.save(DATA_KEYS.COLLAPSED_CODES, Array.from(next));
       return next;
     });
   };
@@ -97,20 +102,20 @@ export const useFundLayout = (funds) => {
     };
     const next = [...groups, newGroup];
     setGroups(next);
-    localStorage.setItem('groups', JSON.stringify(next));
+    syncService.save(DATA_KEYS.GROUPS, next);
     setCurrentTab(newGroup.id);
   };
 
   const removeGroup = (id) => {
     const next = groups.filter((g) => g.id !== id);
     setGroups(next);
-    localStorage.setItem('groups', JSON.stringify(next));
+    syncService.save(DATA_KEYS.GROUPS, next);
     if (currentTab === id) setCurrentTab('all');
   };
 
   const updateGroups = (newGroups) => {
     setGroups(newGroups);
-    localStorage.setItem('groups', JSON.stringify(newGroups));
+    syncService.save(DATA_KEYS.GROUPS, newGroups);
     // 如果当前选中的分组被删除了，切换回“全部”
     if (
       currentTab !== 'all' &&
@@ -139,7 +144,7 @@ export const useFundLayout = (funds) => {
       return g;
     });
     setGroups(next);
-    localStorage.setItem('groups', JSON.stringify(next));
+    syncService.save(DATA_KEYS.GROUPS, next);
     return addedCount;
   };
 
@@ -154,7 +159,7 @@ export const useFundLayout = (funds) => {
       return g;
     });
     setGroups(next);
-    localStorage.setItem('groups', JSON.stringify(next));
+    syncService.save(DATA_KEYS.GROUPS, next);
   };
 
   const toggleFundInGroup = (code, groupId) => {
@@ -169,12 +174,12 @@ export const useFundLayout = (funds) => {
       return g;
     });
     setGroups(next);
-    localStorage.setItem('groups', JSON.stringify(next));
+    syncService.save(DATA_KEYS.GROUPS, next);
   };
 
   const setViewModeAndPersist = (mode) => {
     setViewMode(mode);
-    localStorage.setItem('viewMode', mode);
+    syncService.save(DATA_KEYS.VIEW_MODE, mode);
   };
 
   return {

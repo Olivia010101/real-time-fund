@@ -79,3 +79,5 @@ fabric.properties
 
 /node_modules/
 /.next/
+
+.env.local

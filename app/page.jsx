@@ -24,6 +24,9 @@ import { useFunds } from "./hooks/useFunds";
 import { useFundSearch } from "./hooks/useFundSearch";
 import { useFundLayout } from "./hooks/useFundLayout";
 import { useFundConfig } from "./hooks/useFundConfig";
+import AuthModal from "./components/AuthModal";
+import SyncStatus from "./components/SyncStatus";
+import { syncService, DATA_KEYS } from "./lib/syncService";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(false);
@@ -80,6 +83,9 @@ export default function HomePage() {
   // 反馈弹窗状态
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackNonce, setFeedbackNonce] = useState(0);
+
+  // 认证弹窗状态
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // 搜索相关状态与逻辑（自定义 Hook）
   const {
@@ -213,7 +219,7 @@ export default function HomePage() {
       if (newFunds.length > 0) {
         const updated = dedupeByCode([...newFunds, ...funds]);
         setFunds(updated);
-        localStorage.setItem('funds', JSON.stringify(updated));
+        syncService.save(DATA_KEYS.FUNDS, updated);
       }
 
       resetSearch();
@@ -260,7 +266,7 @@ export default function HomePage() {
       } else {
         const next = dedupeByCode([...newFunds, ...funds]);
         setFunds(next);
-        localStorage.setItem('funds', JSON.stringify(next));
+        syncService.save(DATA_KEYS.FUNDS, next);
       }
       resetSearch();
       setShowDropdown(false);
@@ -278,7 +284,7 @@ export default function HomePage() {
   const removeFund = (removeCode) => {
     const next = funds.filter((f) => f.code !== removeCode);
     setFunds(next);
-    localStorage.setItem('funds', JSON.stringify(next));
+    syncService.save(DATA_KEYS.FUNDS, next);
 
     // 同步删除分组中的失效代码
     const nextGroups = groups.map(g => ({
@@ -286,14 +292,14 @@ export default function HomePage() {
       codes: g.codes.filter(c => c !== removeCode)
     }));
     setGroups(nextGroups);
-    localStorage.setItem('groups', JSON.stringify(nextGroups));
+    syncService.save(DATA_KEYS.GROUPS, nextGroups);
 
     // 同步删除展开收起状态
     setCollapsedCodes(prev => {
       if (!prev.has(removeCode)) return prev;
       const nextSet = new Set(prev);
       nextSet.delete(removeCode);
-      localStorage.setItem('collapsedCodes', JSON.stringify(Array.from(nextSet)));
+      syncService.save(DATA_KEYS.COLLAPSED_CODES, Array.from(nextSet));
       return nextSet;
     });
 
@@ -302,7 +308,7 @@ export default function HomePage() {
       if (!prev.has(removeCode)) return prev;
       const nextSet = new Set(prev);
       nextSet.delete(removeCode);
-      localStorage.setItem('favorites', JSON.stringify(Array.from(nextSet)));
+      syncService.save(DATA_KEYS.FAVORITES, Array.from(nextSet));
       if (nextSet.size === 0) setCurrentTab('all');
       return nextSet;
     });
@@ -356,6 +362,8 @@ export default function HomePage() {
         hasFunds={funds.length > 0}
         onManualRefresh={manualRefresh}
         onOpenSettings={() => setSettingsOpen(true)}
+        syncStatus={<SyncStatus onOpenAuth={() => setAuthModalOpen(true)} />}
+        onOpenAuth={() => setAuthModalOpen(true)}
       />
 
       <div className="grid">
@@ -455,7 +463,7 @@ export default function HomePage() {
             viewMode={viewMode}
             onChangeViewMode={(mode) => {
               setViewMode(mode);
-              localStorage.setItem('viewMode', mode);
+              syncService.save(DATA_KEYS.VIEW_MODE, mode);
             }}
             sortBy={sortBy}
             onChangeSortBy={setSortBy}
@@ -625,7 +633,7 @@ export default function HomePage() {
                 } else {
                   next[code] = pos;
                 }
-                localStorage.setItem('positions', JSON.stringify(next));
+                syncService.save(DATA_KEYS.POSITIONS, next);
                 return next;
               });
             }}
@@ -645,6 +653,18 @@ export default function HomePage() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      <AnimatePresence>
+        {authModalOpen && (
+          <AuthModal
+            onClose={() => setAuthModalOpen(false)}
+            onAuthSuccess={async () => {
+              // 登录成功后同步数据
+              await syncService.smartMerge();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
