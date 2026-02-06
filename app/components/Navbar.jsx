@@ -9,7 +9,6 @@ export default function Navbar({
   onManualRefresh,
   onOpenSettings,
   syncStatus,
-  onOpenAuth,
 }) {
   return (
     <div className="navbar glass">
@@ -23,7 +22,7 @@ export default function Navbar({
       </div>
       <div className="actions">
         {syncStatus && (
-          <div style={{ marginRight: '8px', cursor: 'pointer' }} onClick={onOpenAuth}>
+          <div style={{ marginRight: '8px' }}>
             {syncStatus}
           </div>
         )}
