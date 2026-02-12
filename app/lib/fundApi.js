@@ -152,20 +152,21 @@ export const fetchFundData = async (code) => {
               ? window.Data_netWorthTrend
               : [];
 
-            if (trend.length > 0) {
-              // 仅保留最近 90 个点，避免对象过大
-              const sliced = trend.slice(-90);
-              historyTrend = sliced.map((item) => ({
-                x: item.x,
-                y: item.y,
-                equityReturn: item.equityReturn,
-              }));
+    if (trend.length > 0) {
+      // 保存完整历史数据，支持多时间窗口切换
+      // 数据格式: [{ x: timestamp, y: nav, equityReturn: dailyChange }, ...]
+      historyTrend = trend.map((item) => ({
+        x: item.x,
+        y: item.y,
+        equityReturn: item.equityReturn,
+      }));
 
-              const last = sliced[sliced.length - 2];
-              if (last && typeof last.equityReturn === 'number') {
-                yesterdayChange = last.equityReturn;
-              }
-            }
+      // 计算昨日涨跌幅（倒数第二个点）
+      const last = trend[trend.length - 2];
+      if (last && typeof last.equityReturn === 'number') {
+        yesterdayChange = last.equityReturn;
+      }
+    }
           } catch (e) {
             console.error('获取历史净值走势失败', e);
           }

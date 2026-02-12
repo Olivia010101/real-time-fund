@@ -45,6 +45,7 @@ export default function HomePage() {
     positions,
     setPositions,
     dedupeByCode,
+    intradayData,
   } = useFunds();
 
   // 布局 / 分组 / 自选等状态
@@ -525,21 +526,22 @@ export default function HomePage() {
                   </button>
                 </div>
               )}
-              <FundListView
-                funds={displayFunds}
-                viewMode={viewMode}
-                currentTab={currentTab}
-                favorites={favorites}
-                positions={positions}
-                collapsedCodes={collapsedCodes}
-                onToggleFavorite={toggleFavorite}
-                onRemoveFromCurrentGroup={removeFundFromCurrentGroup}
-                onEditPosition={setEditingPositionFund}
-                onDeleteFund={(code, name) =>
-                  setDeleteFundConfirm({ code, name })
-                }
-                onToggleCollapse={toggleCollapse}
-              />
+                <FundListView
+                  funds={displayFunds}
+                  viewMode={viewMode}
+                  currentTab={currentTab}
+                  favorites={favorites}
+                  positions={positions}
+                  collapsedCodes={collapsedCodes}
+                  intradayData={intradayData}
+                  onToggleFavorite={toggleFavorite}
+                  onRemoveFromCurrentGroup={removeFundFromCurrentGroup}
+                  onEditPosition={setEditingPositionFund}
+                  onDeleteFund={(code, name) =>
+                    setDeleteFundConfirm({ code, name })
+                  }
+                  onToggleCollapse={toggleCollapse}
+                />
             </>
           )}
         </div>

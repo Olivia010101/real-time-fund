@@ -1219,3 +1219,41 @@ body {
     max-width: none !important;
   }
 }
+
+/* Time Range Selector Styles */
+.time-range-selector {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.time-range-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-range-btn:hover:not(.disabled) {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.time-range-btn.active {
+  color: var(--bg);
+  background: var(--primary);
+}
+
+.time-range-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
